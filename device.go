@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package evdev
@@ -12,6 +13,13 @@ import (
 	"syscall"
 	"unsafe"
 )
+
+/*
+
+#include <linux/input.h>
+#include <stdlib.h>
+*/
+import "C"
 
 // A Linux input device from which events can be read.
 type InputDevice struct {
@@ -29,6 +37,7 @@ type InputDevice struct {
 	EvdevVersion int // evdev protocol version
 
 	Capabilities     map[CapabilityType][]CapabilityCode // supported event types and codes.
+	AbsInfo          map[int]AbsInfo
 	CapabilitiesFlat map[int][]int
 }
 
@@ -131,9 +140,11 @@ func (dev *InputDevice) set_device_capabilities() error {
 	// events e.g: {1: [272, 273, 274, 275], 2: [0, 1, 6, 8]}
 	// capabilities := make(map[int][]int)
 	capabilities := make(map[CapabilityType][]CapabilityCode)
+	absinfos := make(map[int]AbsInfo)
 
 	evbits := new([(EV_MAX + 1) / 8]byte)
 	codebits := new([(KEY_MAX + 1) / 8]byte)
+	absbits := new([(ABS_MAX + 1) / 8]byte)
 	// absbits  := new([6]byte)
 
 	err := ioctl(dev.File.Fd(), uintptr(EVIOCGBIT(0, EV_MAX)), unsafe.Pointer(evbits))
@@ -169,7 +180,44 @@ func (dev *InputDevice) set_device_capabilities() error {
 		}
 	}
 
+	err = ioctl(dev.File.Fd(), uintptr(EVIOCGBIT(0, ABS_MAX)), unsafe.Pointer(absbits))
+
+	if err != 0 {
+		return err
+	}
+
+	for abstype := 0; abstype < ABS_MAX; abstype++ {
+
+		// Skip hats
+		if abstype == ABS_HAT0X {
+			abstype = ABS_HAT3Y
+			continue
+		}
+
+		if absbits[abstype/8]&(1<<uint(abstype%8)) != 0 {
+
+			absinfo := C.malloc(C.sizeof_struct_input_absinfo)
+
+			if ioctl(dev.File.Fd(), uintptr(EVIOCGABS(abstype)), unsafe.Pointer(absinfo)) < 0 {
+				continue
+			} else {
+
+				var a AbsInfo
+				a.Unpack(unsafe.Pointer(absinfo))
+				//key := CapabilityType{abstype, ABS[abstype]}
+				absinfos[abstype] = a
+
+			}
+
+			C.free(absinfo)
+
+		}
+
+	}
+
 	dev.Capabilities = capabilities
+	dev.AbsInfo = absinfos
+
 	return nil
 }
 
@@ -265,6 +313,19 @@ type AbsInfo struct {
 	fuzz       int32
 	flat       int32
 	resolution int32
+}
+
+func (a *AbsInfo) Unpack(data unsafe.Pointer) {
+
+	cdata := C.GoBytes(data, C.sizeof_struct_input_absinfo)
+	buf := bytes.NewBuffer(cdata)
+
+	binary.Read(buf, binary.LittleEndian, &a.value)
+	binary.Read(buf, binary.LittleEndian, &a.minimum)
+	binary.Read(buf, binary.LittleEndian, &a.maximum)
+	binary.Read(buf, binary.LittleEndian, &a.fuzz)
+	binary.Read(buf, binary.LittleEndian, &a.flat)
+	binary.Read(buf, binary.LittleEndian, &a.resolution)
 }
 
 // Corresponds to the input_id struct.
