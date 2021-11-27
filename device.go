@@ -36,9 +36,9 @@ type InputDevice struct {
 
 	EvdevVersion int // evdev protocol version
 
-	Capabilities     map[CapabilityType][]CapabilityCode // supported event types and codes.
-	AbsInfo          map[int]AbsInfo
-	CapabilitiesFlat map[int][]int
+	//Capabilities     map[CapabilityType][]CapabilityCode // supported event types and codes.
+	Capabilities map[string]map[int]string
+	AbsInfo      map[string]AbsInfo
 }
 
 // Open an evdev input device.
@@ -117,11 +117,13 @@ func (dev *InputDevice) ReadOne() (*InputEvent, error) {
 //     bus 0x3, vendor 0x46d, product 0xc069, version 0x110
 //     events EV_KEY 1, EV_SYN 0, EV_REL 2, EV_MSC 4
 func (dev *InputDevice) String() string {
+
 	evtypes := make([]string, 0)
 
-	for ev := range dev.Capabilities {
-		evtypes = append(evtypes, fmt.Sprintf("%s %d", ev.Name, ev.Type))
+	for evname, evtype := range dev.Capabilities {
+		evtypes = append(evtypes, fmt.Sprintf("%s %v", evname, evtype))
 	}
+
 	evtypes_s := strings.Join(evtypes, ", ")
 
 	return fmt.Sprintf(
@@ -139,8 +141,12 @@ func (dev *InputDevice) set_device_capabilities() error {
 	// Capabilities is a map of supported event types to lists of
 	// events e.g: {1: [272, 273, 274, 275], 2: [0, 1, 6, 8]}
 	// capabilities := make(map[int][]int)
-	capabilities := make(map[CapabilityType][]CapabilityCode)
-	absinfos := make(map[int]AbsInfo)
+
+	dev.Capabilities = make(map[string]map[int]string)
+
+	//capabilities := make(map[CapabilityType][]CapabilityCode)
+
+	dev.AbsInfo = make(map[string]AbsInfo)
 
 	evbits := new([(EV_MAX + 1) / 8]byte)
 	codebits := new([(KEY_MAX + 1) / 8]byte)
@@ -155,7 +161,8 @@ func (dev *InputDevice) set_device_capabilities() error {
 	// Build a map of the device's capabilities
 	for evtype := 0; evtype < EV_MAX; evtype++ {
 		if evbits[evtype/8]&(1<<uint(evtype%8)) != 0 {
-			eventcodes := make([]CapabilityCode, 0)
+			//eventcodes := make([]CapabilityCode, 0)
+			flatteneventcodes := make(map[int]string)
 
 			err = ioctl(dev.File.Fd(), uintptr(EVIOCGBIT(evtype, KEY_MAX)), unsafe.Pointer(codebits))
 			if err != 0 {
@@ -169,14 +176,18 @@ func (dev *InputDevice) set_device_capabilities() error {
 
 			for evcode := 0; evcode < KEY_MAX; evcode++ {
 				if codebits[evcode/8]&(1<<uint(evcode%8)) != 0 {
-					c := CapabilityCode{evcode, ByEventType[evtype][evcode]}
-					eventcodes = append(eventcodes, c)
+					//c := CapabilityCode{evcode, ByEventType[evtype][evcode]}
+					//eventcodes = append(eventcodes, c)
+					flatteneventcodes[evcode] = ByEventType[evtype][evcode]
 				}
 			}
 
 			// capabilities[EV_KEY] = [KEY_A, KEY_B, KEY_C, ...]
-			key := CapabilityType{evtype, EV[evtype]}
-			capabilities[key] = eventcodes
+			/*
+				key := CapabilityType{evtype, EV[evtype]}
+				capabilities[key] = eventcodes*/
+			dev.Capabilities[EV[evtype]] = flatteneventcodes
+
 		}
 	}
 
@@ -205,7 +216,7 @@ func (dev *InputDevice) set_device_capabilities() error {
 				var a AbsInfo
 				a.Unpack(unsafe.Pointer(absinfo))
 				//key := CapabilityType{abstype, ABS[abstype]}
-				absinfos[abstype] = a
+				dev.AbsInfo[ABS[abstype]] = a
 
 			}
 
@@ -214,9 +225,6 @@ func (dev *InputDevice) set_device_capabilities() error {
 		}
 
 	}
-
-	dev.Capabilities = capabilities
-	dev.AbsInfo = absinfos
 
 	return nil
 }
@@ -307,12 +315,12 @@ type CapabilityCode struct {
 }
 
 type AbsInfo struct {
-	value      int32
-	minimum    int32
-	maximum    int32
-	fuzz       int32
-	flat       int32
-	resolution int32
+	Value      int32
+	Minimum    int32
+	Maximum    int32
+	Fuzz       int32
+	Flat       int32
+	Resolution int32
 }
 
 func (a *AbsInfo) Unpack(data unsafe.Pointer) {
@@ -320,12 +328,12 @@ func (a *AbsInfo) Unpack(data unsafe.Pointer) {
 	cdata := C.GoBytes(data, C.sizeof_struct_input_absinfo)
 	buf := bytes.NewBuffer(cdata)
 
-	binary.Read(buf, binary.LittleEndian, &a.value)
-	binary.Read(buf, binary.LittleEndian, &a.minimum)
-	binary.Read(buf, binary.LittleEndian, &a.maximum)
-	binary.Read(buf, binary.LittleEndian, &a.fuzz)
-	binary.Read(buf, binary.LittleEndian, &a.flat)
-	binary.Read(buf, binary.LittleEndian, &a.resolution)
+	binary.Read(buf, binary.LittleEndian, &a.Value)
+	binary.Read(buf, binary.LittleEndian, &a.Minimum)
+	binary.Read(buf, binary.LittleEndian, &a.Maximum)
+	binary.Read(buf, binary.LittleEndian, &a.Fuzz)
+	binary.Read(buf, binary.LittleEndian, &a.Flat)
+	binary.Read(buf, binary.LittleEndian, &a.Resolution)
 }
 
 // Corresponds to the input_id struct.
