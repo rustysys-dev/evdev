@@ -191,7 +191,7 @@ func (dev *InputDevice) set_device_capabilities() error {
 		}
 	}
 
-	err = ioctl(dev.File.Fd(), uintptr(EVIOCGBIT(0, ABS_MAX)), unsafe.Pointer(absbits))
+	err = ioctl(dev.File.Fd(), uintptr(EVIOCGBIT(EV_ABS, (ABS_MAX+1)/8)), unsafe.Pointer(absbits))
 
 	if err != 0 {
 		return err
