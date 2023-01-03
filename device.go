@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package evdev
@@ -34,7 +35,7 @@ type InputDevice struct {
 
 // Open an evdev input device.
 func Open(devnode string) (*InputDevice, error) {
-	f, err := os.Open(devnode)
+	f, err := os.OpenFile(devnode, os.O_RDWR, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -101,12 +102,25 @@ func (dev *InputDevice) ReadOne() (*InputEvent, error) {
 	return &event, err
 }
 
+// Write a single input event.
+func (dev *InputDevice) WriteOne(event *InputEvent) error {
+	b := new(bytes.Buffer)
+	err := binary.Write(b, binary.LittleEndian, event)
+	if err != nil {
+		return err
+	}
+
+	_, err = dev.File.Write(b.Bytes())
+	return err
+}
+
 // Get a useful description for an input device. Example:
-//   InputDevice /dev/input/event3 (fd 3)
-//     name Logitech USB Laser Mouse
-//     phys usb-0000:00:12.0-2/input0
-//     bus 0x3, vendor 0x46d, product 0xc069, version 0x110
-//     events EV_KEY 1, EV_SYN 0, EV_REL 2, EV_MSC 4
+//
+//	InputDevice /dev/input/event3 (fd 3)
+//	  name Logitech USB Laser Mouse
+//	  phys usb-0000:00:12.0-2/input0
+//	  bus 0x3, vendor 0x46d, product 0xc069, version 0x110
+//	  events EV_KEY 1, EV_SYN 0, EV_REL 2, EV_MSC 4
 func (dev *InputDevice) String() string {
 	evtypes := make([]string, 0)
 
@@ -212,9 +226,10 @@ func (dev *InputDevice) set_device_info() error {
 }
 
 // Get repeat rate as a two element array.
-//   [0] repeat rate in characters per second
-//   [1] amount of time that a key must be depressed before it will start
-//       to repeat (in milliseconds)
+//
+//	[0] repeat rate in characters per second
+//	[1] amount of time that a key must be depressed before it will start
+//	    to repeat (in milliseconds)
 func (dev *InputDevice) GetRepeatRate() *[2]uint {
 	repeat_delay := new([2]uint)
 	ioctl(dev.File.Fd(), uintptr(EVIOCGREP), unsafe.Pointer(repeat_delay))
