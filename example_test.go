@@ -1,8 +1,9 @@
 package evdev_test
 
 import (
-	. "evdev"
 	"fmt"
+
+	"github.com/grafov/evdev"
 )
 
 func ExampleOpen() {

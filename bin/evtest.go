@@ -1,4 +1,6 @@
+//go:build linux
 // +build linux
+
 // Input device event monitor.
 package main
 
@@ -8,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	evdev "github.com/gvalkov/golang-evdev"
+	"github.com/grafov/evdev"
 )
 
 const (
@@ -129,10 +131,10 @@ func main() {
 	fmt.Printf("Device capabilities:\n")
 
 	// for ctype, codes := range dev.Capabilities {
-	// 	fmt.Printf("  Type %s %d\n", ctype.Name, ctype.Type)
-	// 	for i := range codes {
-	// 		fmt.Printf("   Code %d %s\n", codes[i].Code, codes[i].Name)
-	// 	}
+	//	fmt.Printf("  Type %s %d\n", ctype.Name, ctype.Type)
+	//	for i := range codes {
+	//		fmt.Printf("   Code %d %s\n", codes[i].Code, codes[i].Name)
+	//	}
 	// }
 
 	fmt.Printf("Listening for events ...\n")

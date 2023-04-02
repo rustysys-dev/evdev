@@ -1,3 +1,3 @@
-module github.com/gvalkov/golang-evdev
+module github.com/grafov/evdev
 
-go 1.17
+go 1.20
