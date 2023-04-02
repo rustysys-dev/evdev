@@ -14,7 +14,8 @@ the code to my own repo and support it for my projects.
 *the development of the library and support of it for the years!*
 
 ## Documentation
-API docs at https://pkg.go.dev/github.com/grafov/evdev
+
+API docs at https://godocs.io/github.com/grafov/evdev
 
 Check basic usage example: [example_test.go](example_test.go)
 
