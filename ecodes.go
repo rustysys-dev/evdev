@@ -1503,6 +1503,11 @@ var ByEventType = map[int]map[int]string{
 	EV_FF:  FF,
 }
 
+func Ecode(value string) int {
+
+	return ecodes[value]
+}
+
 func init() {
 	for code, value := range ecodes {
 		switch {
