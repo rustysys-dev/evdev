@@ -1439,6 +1439,8 @@ var ecodes = map[string]int{
 	"KEY_MACRO28":                  KEY_MACRO28,
 	"KEY_MACRO29":                  KEY_MACRO29,
 	"KEY_MACRO30":                  KEY_MACRO30,
+	"KEY_MACRO31":                  KEY_MACRO31,
+	"KEY_MACRO32":                  KEY_MACRO32,
 	"KEY_MACRO_RECORD_START":       KEY_MACRO_RECORD_START,
 	"KEY_MACRO_RECORD_STOP":        KEY_MACRO_RECORD_STOP,
 	"KEY_MACRO_PRESET_CYCLE":       KEY_MACRO_PRESET_CYCLE,
